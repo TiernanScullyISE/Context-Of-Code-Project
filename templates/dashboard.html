@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Monitoring Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .dashboard-section {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+        }
+        #logs {
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <h1>System Monitoring Dashboard</h1>
+    
+    <!-- PC Metrics Section -->
+    <div class="dashboard-section" id="system-metrics">
+        <h2>PC Metrics</h2>
+        <p>Number of Open Processes: <span id="num-processes">-</span></p>
+        <p>RAM Usage: <span id="ram-usage">-</span>%</p>
+    </div>
+    
+    <!-- Weather Metrics Section -->
+    <div class="dashboard-section" id="weather-metrics">
+        <h2>Weather Metrics</h2>
+        <p>Temperature: <span id="temperature">-</span>°C</p>
+        <p>Condition: <span id="weather-condition">-</span></p>
+    </div>
+    
+    <!-- Log History Section -->
+    <div class="dashboard-section" id="logs-section">
+        <h2>Log History</h2>
+        <div id="logs"></div>
+    </div>
+    
+    <script>
+        // Function to fetch logs from the server and update the log history section.
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/api/metrics/logs');
+                const logs = await response.json();
+                const logsDiv = document.getElementById('logs');
+                logsDiv.innerHTML = '';
+                logs.forEach(log => {
+                    const logEntry = document.createElement('div');
+                    logEntry.innerText = `[${log.timestamp}] (${log.metric_type}) ${JSON.stringify(log.data)}`;
+                    logsDiv.appendChild(logEntry);
+                });
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+            }
+        }
+
+        // Function to update the PC and weather metrics based on the latest logs.
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/metrics/logs');
+                const logs = await response.json();
+                let latestSystem = null;
+                let latestWeather = null;
+                logs.forEach(log => {
+                    if (log.metric_type === 'system' && !latestSystem) {
+                        latestSystem = log;
+                    } else if (log.metric_type === 'weather' && !latestWeather) {
+                        latestWeather = log;
+                    }
+                });
+                if (latestSystem) {
+                    document.getElementById('num-processes').innerText = latestSystem.data.processes;
+                    document.getElementById('ram-usage').innerText = latestSystem.data.ram_usage;
+                }
+                if (latestWeather) {
+                    document.getElementById('temperature').innerText = latestWeather.data.temperature;
+                    document.getElementById('weather-condition').innerText = latestWeather.data.condition;
+                }
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+
+        // Refresh dashboard data every 10 seconds.
+        setInterval(() => {
+            fetchLogs();
+            updateDashboard();
+        }, 10000);
+
+        // Initial load.
+        fetchLogs();
+        updateDashboard();
+    </script>
+</body>
+</html>
